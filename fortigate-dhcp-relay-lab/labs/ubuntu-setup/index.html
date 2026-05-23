@@ -1,0 +1,126 @@
+ <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 2: Cấu hình Ubuntu ra Internet - FortiLab</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f1a; color: #e0e0e0; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; background: rgba(30, 30, 46, 0.95); border-radius: 20px; margin-top: 20px; margin-bottom: 20px; }
+        h1 { text-align: center; color: #e94560; font-size: 2.5rem; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #333; }
+        h2 { color: #e94560; margin: 30px 0 15px 0; padding-bottom: 8px; border-bottom: 2px solid #e94560; display: inline-block; }
+        h3 { color: #ff8c42; margin: 20px 0 10px 0; }
+        pre { background: #1e1e2e; padding: 15px 20px; border-radius: 12px; overflow-x: auto; margin: 15px 0; border-left: 4px solid #e94560; }
+        code { font-family: 'Courier New', monospace; color: #ffd966; }
+        .note { background: #1a2a3a; border-left: 4px solid #ffc107; padding: 15px 20px; margin: 20px 0; border-radius: 10px; }
+        .success { background: #1a3a2a; border-left: 4px solid #28a745; padding: 15px 20px; margin: 20px 0; border-radius: 10px; }
+        .back-link { display: inline-block; margin-top: 30px; color: #e94560; text-decoration: none; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #333; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐧 Cấu hình Ubuntu Server ra Internet</h1>
+        <div class="subtitle">Hướng dẫn chi tiết để Ubuntu có thể ping ra Internet và cài đặt package</div>
+        
+        <h2>🎯 Mục tiêu</h2>
+        <p>Cấu hình mạng cho Ubuntu Server để có thể ping ra Internet và cài đặt các gói cần thiết.</p>
+        
+        <h2>🔍 Kiểm tra trạng thái hiện tại</h2>
+        <pre><code>ip a</code></pre>
+        <p>Card mạng (thường là <code>ens3</code> hoặc <code>eth0</code>) ở trạng thái UP nhưng chưa có IP.</p>
+        
+        <h2>🔧 Cấu hình IP tĩnh với Netplan</h2>
+        
+        <h3>Bước 1: Xác định file cấu hình</h3>
+        <pre><code>ls /etc/netplan/</code></pre>
+        
+        <h3>Bước 2: Chỉnh sửa file cấu hình</h3>
+        <pre><code>sudo nano /etc/netplan/01-netcfg.yaml</code></pre>
+        
+        <h3>Bước 3: Thêm nội dung</h3>
+        <pre><code>network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ens3:                      # Thay bằng tên card mạng của bạn
+      dhcp4: no
+      addresses:
+        - 172.16.10.10/24
+      gateway4: 172.16.10.2
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 8.8.4.4</code></pre>
+        
+        <h3>Bước 4: Áp dụng cấu hình</h3>
+        <pre><code>sudo netplan apply</code></pre>
+        
+        <h3>Bước 5: Kiểm tra lại IP</h3>
+        <pre><code>ip a show ens3</code></pre>
+        
+        <div class="success">✅ Thành công! Ubuntu đã có IP 172.16.10.10/24</div>
+        
+        <h2>🌐 Cấu hình Firewall Policy trên FortiGate</h2>
+        <p>Để Ubuntu ping ra Internet, cần policy NAT trên FortiGate:</p>
+        <pre><code>config firewall policy
+    edit 1
+        set name "Ubuntu-to-Internet"
+        set srcintf "port3"
+        set dstintf "wan1"
+        set srcaddr "all"
+        set dstaddr "all"
+        set action accept
+        set schedule "always"
+        set service "ALL"
+        set nat enable
+    next
+end</code></pre>
+        
+        <div class="note">
+            <strong>📌 Giải thích:</strong> <code>set nat enable</code> cho phép Ubuntu sử dụng địa chỉ IP WAN của FortiGate để ra Internet.
+        </div>
+        
+        <h2>✅ Kiểm tra kết nối</h2>
+        
+        <h3>1. Ping đến gateway (FortiGate)</h3>
+        <pre><code>ping 172.16.10.2</code></pre>
+        <p>✅ Kết quả: <code>64 bytes from 172.16.10.2: icmp_seq=1 ttl=64 time=0.8ms</code></p>
+        
+        <h3>2. Ping ra Internet</h3>
+        <pre><code>ping 8.8.8.8</code></pre>
+        <p>✅ Kết quả: <code>64 bytes from 8.8.8.8: icmp_seq=1 ttl=55 time=15.2ms</code></p>
+        
+        <h3>3. Ping có tên miền</h3>
+        <pre><code>ping google.com</code></pre>
+        <p>✅ Kết quả: Phân giải được tên miền và ping thành công</p>
+        
+        <h3>4. Cập nhật danh sách package</h3>
+        <pre><code>sudo apt update</code></pre>
+        <p>✅ Kết quả: Hiển thị danh sách repository đã cập nhật, không có lỗi</p>
+        
+        <div class="success">
+            <strong>🎉 Thành công!</strong> Ubuntu đã có thể truy cập Internet để cài đặt package.
+        </div>
+        
+        <h2>📦 Cài đặt DHCP Server</h2>
+        <pre><code>sudo apt install isc-dhcp-server -y</code></pre>
+        
+        <h2>🐞 Troubleshooting</h2>
+        <table style="width:100%; border-collapse: collapse;">
+            <tr style="background:#e94560;"><th style="padding:10px; text-align:left;">Lỗi</th><th style="padding:10px; text-align:left;">Cách khắc phục</th></tr>
+            <tr><td style="padding:10px; border-bottom:1px solid #444;"><code>ping: connect: Network is unreachable</code></td><td style="padding:10px; border-bottom:1px solid #444;">Kiểm tra lại gateway4 trong file Netplan</td></tr>
+            <tr><td style="padding:10px; border-bottom:1px solid #444;"><code>ping: 8.8.8.8: Temporary failure</code></td><td style="padding:10px; border-bottom:1px solid #444;">Thêm default route: <code>sudo ip route add default via 172.16.10.2</code></td></tr>
+            <tr><td style="padding:10px;"><code>apt update</code> báo lỗi DNS</td><td style="padding:10px;">Kiểm tra nameservers trong file Netplan</td></tr>
+        </table>
+        
+        <a href="../../index.html" class="back-link">← Quay lại trang chủ</a>
+        
+        <div class="footer">
+            📅 Cập nhật: 23/05/2025 | 🐧 Ubuntu 18.04/20.04 | 🛡️ FortiGate 6.4
+        </div>
+    </div>
+</body>
+</html>

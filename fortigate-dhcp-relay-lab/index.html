@@ -1,0 +1,68 @@
+ <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FortiLab - DHCP Relay trên FortiGate</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; color: #fff; }
+        .header { background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%); padding: 60px 20px; text-align: center; border-bottom: 3px solid #e94560; }
+        .header h1 { font-size: 3rem; margin-bottom: 10px; }
+        .header h1 span { color: #e94560; }
+        .header p { font-size: 1.2rem; opacity: 0.9; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        .section-title { font-size: 2rem; margin-bottom: 30px; padding-bottom: 10px; border-bottom: 2px solid #e94560; display: inline-block; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; margin-top: 30px; }
+        .card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 15px; padding: 25px; transition: transform 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.2); }
+        .card:hover { transform: translateY(-5px); border-color: #e94560; }
+        .card h3 { font-size: 1.5rem; margin-bottom: 15px; color: #e94560; }
+        .card p { margin-bottom: 20px; line-height: 1.6; opacity: 0.9; }
+        .card ul { margin: 15px 0 20px 20px; opacity: 0.8; }
+        .badge { display: inline-block; background: #e94560; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; margin-bottom: 15px; }
+        .btn { display: inline-block; background: #e94560; color: #fff; padding: 10px 20px; border-radius: 25px; text-decoration: none; transition: background 0.3s ease; margin-right: 10px; }
+        .btn:hover { background: #ff6b8a; }
+        .footer { text-align: center; padding: 30px; background: #0f3460; margin-top: 50px; }
+        @media (max-width: 768px) { .header h1 { font-size: 2rem; } .card-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ Forti<span>Lab</span></h1>
+        <p>Học FortiGate qua các Lab thực tế | DHCP Relay trên EVE-NG</p>
+    </div>
+    <div class="container">
+        <h2 class="section-title">📚 Bài Lab FortiGate</h2>
+        <div class="card-grid">
+            <div class="card">
+                <span class="badge">🏷️ Lab 1</span>
+                <h3>🔄 DHCP Relay trên FortiGate</h3>
+                <p>Hướng dẫn cấu hình FortiGate làm DHCP Relay Agent, chuyển tiếp gói tin DHCP giữa các subnet khác nhau.</p>
+                <ul>
+                    <li>DHCP Server & Client khác subnet</li>
+                    <li>Local-In Policy trên FortiOS 6.4</li>
+                    <li>Cấu hình Ubuntu DHCP Server</li>
+                    <li>Kiểm tra và debug</li>
+                </ul>
+                <a href="labs/dhcp-relay/index.html" class="btn">📖 Đọc bài lab</a>
+            </div>
+            <div class="card">
+                <span class="badge">🏷️ Lab 2</span>
+                <h3>🐧 Cấu hình Ubuntu ra Internet</h3>
+                <p>Hướng dẫn cấu hình mạng cho Ubuntu Server để ping ra Internet và cài đặt package.</p>
+                <ul>
+                    <li>Cấu hình IP tĩnh với Netplan</li>
+                    <li>Thêm default gateway</li>
+                    <li>Cấu hình DNS</li>
+                    <li>Kiểm tra kết nối</li>
+                </ul>
+                <a href="labs/ubuntu-setup/index.html" class="btn">📖 Đọc bài lab</a>
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <p>© 2025 FortiLab - Tài liệu học tập về FortiGate | Lab trên EVE-NG Free</p>
+    </div>
+</body>
+</html>

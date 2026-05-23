@@ -1,0 +1,252 @@
+ <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 1: DHCP Relay trên FortiGate - FortiLab</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f1a; color: #e0e0e0; line-height: 1.6; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; background: rgba(30, 30, 46, 0.95); border-radius: 20px; margin-top: 20px; margin-bottom: 20px; }
+        h1 { text-align: center; color: #e94560; font-size: 2.5rem; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #333; }
+        h2 { color: #e94560; margin: 30px 0 15px 0; padding-bottom: 8px; border-bottom: 2px solid #e94560; display: inline-block; }
+        h3 { color: #ff8c42; margin: 20px 0 10px 0; }
+        pre { background: #1e1e2e; padding: 15px 20px; border-radius: 12px; overflow-x: auto; margin: 15px 0; border-left: 4px solid #e94560; font-size: 14px; }
+        code { font-family: 'Courier New', monospace; color: #ffd966; }
+        .note { background: #1a2a3a; border-left: 4px solid #ffc107; padding: 15px 20px; margin: 20px 0; border-radius: 10px; }
+        .warning { background: #3a1a1a; border-left: 4px solid #dc3545; padding: 15px 20px; margin: 20px 0; border-radius: 10px; }
+        .success { background: #1a3a2a; border-left: 4px solid #28a745; padding: 15px 20px; margin: 20px 0; border-radius: 10px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #444; padding: 10px 12px; text-align: left; }
+        th { background: #e94560; color: #fff; }
+        td { background: #1a1a2e; }
+        .badge { display: inline-block; background: #e94560; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-right: 10px; }
+        .back-link { display: inline-block; margin-top: 30px; color: #e94560; text-decoration: none; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #333; color: #666; }
+        @media (max-width: 768px) { .container { padding: 20px; } h1 { font-size: 1.8rem; } pre { font-size: 12px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 DHCP Relay trên FortiGate</h1>
+        <div class="subtitle">Hướng dẫn cấu hình FortiGate làm DHCP Relay Agent | Lab trên EVE-NG</div>
+        
+        <h2>📌 Giới thiệu</h2>
+        <p>DHCP Relay cho phép FortiGate chuyển tiếp gói tin DHCP từ Client ở subnet này đến DHCP Server ở subnet khác.</p>
+        
+        <div class="note">
+            <strong>🎯 Mục tiêu lab:</strong>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>✅ Cấu hình FortiGate làm DHCP Relay Agent</li>
+                <li>✅ Cấu hình Ubuntu DHCP Server</li>
+                <li>✅ Client Windows nhận IP từ DHCP Server ở subnet khác</li>
+            </ul>
+        </div>
+        
+        <h2>🗺️ Sơ đồ mạng</h2>
+        <pre>
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│   CLOUD     │      │  FortiGate  │      │   Ubuntu    │
+│  Internet   │◄────►│             │◄────►│DHCP Server  │
+└──────┬──────┘ wan1 └──────┬──────┘ port3└──────┬──────┘
+       │          192.168.x.x│          172.16.10.2│172.16.10.10
+       │                    │                     │
+       │                    │ port2               │
+       │                    │ 10.10.10.1/24       │
+       │              ┌─────┴─────┐               │
+       │              │ Windows   │               │
+       │              │ Client    │               │
+       │              └───────────┘               │
+       └──────────────────────────────────────────┘
+        </pre>
+        
+        <table>
+            <thead><tr><th>Thiết bị</th><th>Interface</th><th>IP Address</th><th>Vai trò</th></tr></thead>
+            <tbody>
+                <tr><td>FortiGate</td><td>wan1</td><td>DHCP (192.168.37.x)</td><td>Kết nối Internet</td></tr>
+                <tr><td>FortiGate</td><td>port2</td><td>10.10.10.1/24</td><td>Gateway Client + DHCP Relay</td></tr>
+                <tr><td>FortiGate</td><td>port3</td><td>172.16.10.2/24</td><td>Kết nối DHCP Server</td></tr>
+                <tr><td>Ubuntu</td><td>eth0</td><td>172.16.10.10/24</td><td>DHCP Server</td></tr>
+                <tr><td>Windows</td><td>eth0</td><td>DHCP (10.10.10.x)</td><td>DHCP Client</td></tr>
+            </tbody>
+        </table>
+        
+        <h2>🐧 Phần 1: Cấu hình Ubuntu ra Internet</h2>
+        
+        <h3>Bước 1: Cấu hình IP tĩnh</h3>
+        <pre><code>sudo nano /etc/netplan/01-netcfg.yaml</code></pre>
+        <pre><code>network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ens3:
+      dhcp4: no
+      addresses:
+        - 172.16.10.10/24
+      gateway4: 172.16.10.2
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 8.8.4.4</code></pre>
+        <pre><code>sudo netplan apply</code></pre>
+        
+        <h3>Bước 2: Cấu hình Policy NAT trên FortiGate</h3>
+        <pre><code>config firewall policy
+    edit 1
+        set name "Ubuntu-to-Internet"
+        set srcintf "port3"
+        set dstintf "wan1"
+        set srcaddr "all"
+        set dstaddr "all"
+        set action accept
+        set schedule "always"
+        set service "ALL"
+        set nat enable
+    next
+end</code></pre>
+        
+        <h3>Bước 3: Kiểm tra kết nối</h3>
+        <pre><code>ping 8.8.8.8
+ping google.com</code></pre>
+        
+        <div class="success">✅ Thành công! Ubuntu đã có Internet.</div>
+        
+        <h2>📦 Phần 2: Cài đặt DHCP Server trên Ubuntu</h2>
+        
+        <h3>Bước 1: Cài đặt</h3>
+        <pre><code>sudo apt update
+sudo apt install isc-dhcp-server -y</code></pre>
+        
+        <h3>Bước 2: Cấu hình dhcpd.conf</h3>
+        <pre><code>sudo nano /etc/dhcp/dhcpd.conf</code></pre>
+        <pre><code>subnet 10.10.10.0 netmask 255.255.255.0 {
+    range 10.10.10.100 10.10.10.200;
+    option routers 10.10.10.1;
+    option domain-name-servers 8.8.8.8, 8.8.4.4;
+    default-lease-time 600;
+    max-lease-time 7200;
+}
+
+subnet 172.16.10.0 netmask 255.255.255.0 {
+}</code></pre>
+        
+        <h3>Bước 3: Cấu hình interface</h3>
+        <pre><code>sudo nano /etc/default/isc-dhcp-server</code></pre>
+        <pre><code>INTERFACESv4="ens3"</code></pre>
+        
+        <h3>Bước 4: Khởi động service</h3>
+        <pre><code>sudo systemctl restart isc-dhcp-server
+sudo systemctl enable isc-dhcp-server
+sudo systemctl status isc-dhcp-server</code></pre>
+        
+        <h2>🔄 Phần 3: Cấu hình DHCP Relay trên FortiGate</h2>
+        
+        <h3>Bước 1: Cấu hình IP các interface</h3>
+        <pre><code>config system interface
+    edit "port2"
+        set mode static
+        set ip 10.10.10.1 255.255.255.0
+        set allowaccess ping
+    next
+    edit "port3"
+        set mode static
+        set ip 172.16.10.2 255.255.255.0
+        set allowaccess ping
+    next
+end</code></pre>
+        
+        <h3>Bước 2: Bật DHCP Relay trên port2</h3>
+        <pre><code>config system interface
+    edit "port2"
+        set dhcp-relay-service enable
+        set dhcp-relay-ip "172.16.10.10"
+    next
+end</code></pre>
+        
+        <div class="warning">
+            <strong>⚠️ Quan trọng:</strong> DHCP Server (172.16.10.10) và Client (10.10.10.x) phải ở KHÁC subnet!
+        </div>
+        
+        <h3>Bước 3: Tạo Local-In Policy (FortiOS 6.4 - CLI)</h3>
+        <pre><code>config firewall local-in-policy
+    edit 1
+        set intf "port2"
+        set srcaddr "all"
+        set dstaddr "all"
+        set action accept
+        set service "DHCP"
+        set schedule "always"
+    next
+end</code></pre>
+        
+        <div class="note">
+            <strong>💡 Mẹo:</strong> Để xem Local-In Policy trên GUI v6.4: <strong>System → Feature Visibility → Bật Local-In Policy</strong>, sau đó vào <strong>Policy & Objects → Local In Policy</strong>.
+        </div>
+        
+        <h3>Bước 4: Tạo Firewall Policy cho DHCP Relay</h3>
+        <pre><code>config firewall policy
+    edit 2
+        set name "DHCP-Server-to-Client"
+        set srcintf "port3"
+        set dstintf "port2"
+        set srcaddr "all"
+        set dstaddr "all"
+        set action accept
+        set schedule "always"
+        set service "ALL"
+    next
+end</code></pre>
+        
+        <h2>✅ Phần 4: Kiểm tra hoạt động</h2>
+        
+        <h3>Kiểm tra 1: Windows Client nhận IP</h3>
+        <pre><code>ipconfig /renew
+ipconfig /all</code></pre>
+        <p>✅ Kết quả mong đợi: Nhận IP trong dải 10.10.10.100 - 10.10.10.200</p>
+        
+        <h3>Kiểm tra 2: Xem DHCP lease trên FortiGate</h3>
+        <pre><code>execute dhcp lease-list</code></pre>
+        
+        <h3>Kiểm tra 3: Debug DHCP Relay</h3>
+        <pre><code>diagnose debug application dhcprelay -1
+diagnose debug enable
+# Tắt debug:
+diagnose debug disable</code></pre>
+        
+        <h3>Kiểm tra 4: Bắt gói tin DHCP</h3>
+        <pre><code>diagnose sniffer packet port2 "port 67 or port 68" 4</code></pre>
+        
+        <div class="success">
+            <strong>🎉 Hoàn thành!</strong> Nếu Windows nhận được IP 10.10.10.xxx, lab DHCP Relay đã thành công!
+        </div>
+        
+        <h2>🐞 Troubleshooting</h2>
+        <table>
+            <thead><tr><th>Vấn đề</th><th>Nguyên nhân</th><th>Cách khắc phục</th></tr></thead>
+            <tbody>
+                <tr><td>Windows không nhận IP</td><td>Thiếu Local-In Policy</td><td>Kiểm tra Bước 3.3</td></tr>
+                <tr><td>Ubuntu không ping được 8.8.8.8</td><td>FortiGate chưa có policy NAT</td><td>Thêm policy với <code>set nat enable</code></td></tr>
+                <tr><td>apt update lỗi DNS</td><td>Chưa cấu hình nameserver</td><td>Kiểm tra file Netplan</td></tr>
+            </tbody>
+        </table>
+        
+        <h2>🔧 Các lệnh hữu ích</h2>
+        <table>
+            <thead><tr><th>Lệnh</th><th>Mô tả</th><th>Chạy trên</th></tr></thead>
+            <tbody>
+                <tr><td><code>diagnose debug application dhcprelay -1</code></td><td>Debug DHCP Relay</td><td>FortiGate</td></tr>
+                <tr><td><code>diagnose sniffer packet port2 "port 67 or port 68" 4</code></td><td>Bắt gói tin DHCP</td><td>FortiGate</td></tr>
+                <tr><td><code>execute dhcp lease-list</code></td><td>Xem danh sách DHCP lease</td><td>FortiGate</td></tr>
+                <tr><td><code>sudo tail -f /var/log/syslog | grep dhcp</code></td><td>Xem log DHCP Server</td><td>Ubuntu</td></tr>
+            </tbody>
+        </table>
+        
+        <a href="../../index.html" class="back-link">← Quay lại trang chủ</a>
+        
+        <div class="footer">
+            📅 Cập nhật: 23/05/2025 | 🛡️ Lab trên EVE-NG Free + FortiGate Trial
+        </div>
+    </div>
+</body>
+</html>
