@@ -1,9 +1,9 @@
- <!DOCTYPE html>
-<html lang="vi">
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lab 2: Cấu hình Ubuntu ra Internet - FortiLab</title>
+    <title>Lab 2: Ubuntu Internet Configuration - FortiLab</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f1a; color: #e0e0e0; line-height: 1.6; }
@@ -18,34 +18,37 @@
         .success { background: #1a3a2a; border-left: 4px solid #28a745; padding: 15px 20px; margin: 20px 0; border-radius: 10px; }
         .back-link { display: inline-block; margin-top: 30px; color: #e94560; text-decoration: none; }
         .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #333; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #444; padding: 10px; text-align: left; }
+        th { background: #e94560; color: #fff; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🐧 Cấu hình Ubuntu Server ra Internet</h1>
-        <div class="subtitle">Hướng dẫn chi tiết để Ubuntu có thể ping ra Internet và cài đặt package</div>
+        <h1>🐧 Ubuntu Server Internet Configuration</h1>
+        <div class="subtitle">Step-by-step guide to configure Ubuntu networking for Internet access</div>
         
-        <h2>🎯 Mục tiêu</h2>
-        <p>Cấu hình mạng cho Ubuntu Server để có thể ping ra Internet và cài đặt các gói cần thiết.</p>
+        <h2>🎯 Objective</h2>
+        <p>Configure Ubuntu Server networking to ping the Internet and install required packages (DHCP Server).</p>
         
-        <h2>🔍 Kiểm tra trạng thái hiện tại</h2>
+        <h2>🔍 Check Current Status</h2>
         <pre><code>ip a</code></pre>
-        <p>Card mạng (thường là <code>ens3</code> hoặc <code>eth0</code>) ở trạng thái UP nhưng chưa có IP.</p>
+        <p>The network interface (usually <code>ens3</code> or <code>eth0</code>) is UP but has no IP address assigned.</p>
         
-        <h2>🔧 Cấu hình IP tĩnh với Netplan</h2>
+        <h2>🔧 Static IP Configuration with Netplan</h2>
         
-        <h3>Bước 1: Xác định file cấu hình</h3>
+        <h3>Step 1: Identify Netplan config file</h3>
         <pre><code>ls /etc/netplan/</code></pre>
         
-        <h3>Bước 2: Chỉnh sửa file cấu hình</h3>
+        <h3>Step 2: Edit configuration file</h3>
         <pre><code>sudo nano /etc/netplan/01-netcfg.yaml</code></pre>
         
-        <h3>Bước 3: Thêm nội dung</h3>
+        <h3>Step 3: Add configuration</h3>
         <pre><code>network:
   version: 2
   renderer: networkd
   ethernets:
-    ens3:                      # Thay bằng tên card mạng của bạn
+    ens3:                      # Replace with your interface name
       dhcp4: no
       addresses:
         - 172.16.10.10/24
@@ -55,16 +58,16 @@
           - 8.8.8.8
           - 8.8.4.4</code></pre>
         
-        <h3>Bước 4: Áp dụng cấu hình</h3>
+        <h3>Step 4: Apply configuration</h3>
         <pre><code>sudo netplan apply</code></pre>
         
-        <h3>Bước 5: Kiểm tra lại IP</h3>
+        <h3>Step 5: Verify IP assignment</h3>
         <pre><code>ip a show ens3</code></pre>
         
-        <div class="success">✅ Thành công! Ubuntu đã có IP 172.16.10.10/24</div>
+        <div class="success">✅ Success! Ubuntu now has IP 172.16.10.10/24</div>
         
-        <h2>🌐 Cấu hình Firewall Policy trên FortiGate</h2>
-        <p>Để Ubuntu ping ra Internet, cần policy NAT trên FortiGate:</p>
+        <h2>🌐 FortiGate Firewall Policy</h2>
+        <p>To allow Ubuntu to access the Internet, add a NAT policy on FortiGate:</p>
         <pre><code>config firewall policy
     edit 1
         set name "Ubuntu-to-Internet"
@@ -80,46 +83,46 @@
 end</code></pre>
         
         <div class="note">
-            <strong>📌 Giải thích:</strong> <code>set nat enable</code> cho phép Ubuntu sử dụng địa chỉ IP WAN của FortiGate để ra Internet.
+            <strong>📌 Explanation:</strong> <code>set nat enable</code> allows Ubuntu to use FortiGate's WAN IP address to access the Internet.
         </div>
         
-        <h2>✅ Kiểm tra kết nối</h2>
+        <h2>✅ Connectivity Tests</h2>
         
-        <h3>1. Ping đến gateway (FortiGate)</h3>
+        <h3>1. Ping to Gateway (FortiGate)</h3>
         <pre><code>ping 172.16.10.2</code></pre>
-        <p>✅ Kết quả: <code>64 bytes from 172.16.10.2: icmp_seq=1 ttl=64 time=0.8ms</code></p>
+        <p>✅ Expected: <code>64 bytes from 172.16.10.2: icmp_seq=1 ttl=64 time=0.8ms</code></p>
         
-        <h3>2. Ping ra Internet</h3>
+        <h3>2. Ping to Internet</h3>
         <pre><code>ping 8.8.8.8</code></pre>
-        <p>✅ Kết quả: <code>64 bytes from 8.8.8.8: icmp_seq=1 ttl=55 time=15.2ms</code></p>
+        <p>✅ Expected: <code>64 bytes from 8.8.8.8: icmp_seq=1 ttl=55 time=15.2ms</code></p>
         
-        <h3>3. Ping có tên miền</h3>
+        <h3>3. Ping with Domain Name</h3>
         <pre><code>ping google.com</code></pre>
-        <p>✅ Kết quả: Phân giải được tên miền và ping thành công</p>
+        <p>✅ Expected: Domain resolution works, ping successful</p>
         
-        <h3>4. Cập nhật danh sách package</h3>
+        <h3>4. Update Package Lists</h3>
         <pre><code>sudo apt update</code></pre>
-        <p>✅ Kết quả: Hiển thị danh sách repository đã cập nhật, không có lỗi</p>
+        <p>✅ Expected: Repository lists update successfully without errors</p>
         
         <div class="success">
-            <strong>🎉 Thành công!</strong> Ubuntu đã có thể truy cập Internet để cài đặt package.
+            <strong>🎉 Success!</strong> Ubuntu now has full Internet access to install packages.
         </div>
         
-        <h2>📦 Cài đặt DHCP Server</h2>
+        <h2>📦 Install DHCP Server</h2>
         <pre><code>sudo apt install isc-dhcp-server -y</code></pre>
         
         <h2>🐞 Troubleshooting</h2>
-        <table style="width:100%; border-collapse: collapse;">
-            <tr style="background:#e94560;"><th style="padding:10px; text-align:left;">Lỗi</th><th style="padding:10px; text-align:left;">Cách khắc phục</th></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #444;"><code>ping: connect: Network is unreachable</code></td><td style="padding:10px; border-bottom:1px solid #444;">Kiểm tra lại gateway4 trong file Netplan</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #444;"><code>ping: 8.8.8.8: Temporary failure</code></td><td style="padding:10px; border-bottom:1px solid #444;">Thêm default route: <code>sudo ip route add default via 172.16.10.2</code></td></tr>
-            <tr><td style="padding:10px;"><code>apt update</code> báo lỗi DNS</td><td style="padding:10px;">Kiểm tra nameservers trong file Netplan</td></tr>
+        <table>
+            <tr><th>Error</th><th>Solution</th></tr>
+            <tr><td><code>ping: connect: Network is unreachable</code></td><td>Check gateway4 in Netplan file</td></tr>
+            <tr><td><code>ping: 8.8.8.8: Temporary failure</code></td><td>Add default route: <code>sudo ip route add default via 172.16.10.2</code></td></tr>
+            <tr><td><code>apt update</code> DNS error</td><td>Check nameservers in Netplan file</td></tr>
         </table>
         
-        <a href="../../index.html" class="back-link">← Quay lại trang chủ</a>
+        <a href="../../index.html" class="back-link">← Back to Home</a>
         
         <div class="footer">
-            📅 Cập nhật: 23/05/2025 | 🐧 Ubuntu 18.04/20.04 | 🛡️ FortiGate 6.4
+            📅 Updated: May 23, 2025 | 🐧 Ubuntu 18.04/20.04 | 🛡️ FortiGate 6.4
         </div>
     </div>
 </body>
